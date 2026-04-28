@@ -1,12 +1,12 @@
 {
-    "family": "archer-health-backend-prod",
-    "taskRoleArn": "arn:aws:iam::600627364498:role/archer-health-task-role",
-    "executionRoleArn": "arn:aws:iam::600627364498:role/archer-health-task-execution-role",
+    "family": "project-backend-prod",
+    "taskRoleArn": "arn:aws:iam::600627364498:role/project-task-role",
+    "executionRoleArn": "arn:aws:iam::600627364498:role/project-task-execution-role",
     "networkMode": "awsvpc",
     "containerDefinitions": [
       {
         "name": "backend",
-        "image": "600627364498.dkr.ecr.us-west-2.amazonaws.com/archer-health/backend:latest",
+        "image": "600627364498.dkr.ecr.us-west-2.amazonaws.com/project/backend:latest",
         "cpu": 0,
         "portMappings": [
           {
@@ -58,7 +58,7 @@
           },
           {
             "name": "DB_HOST",
-            "value": "db-archer-health-staging.cl2oeeckqw3o.us-west-2.rds.amazonaws.com"
+            "value": "db-project-staging.cl2oeeckqw3o.us-west-2.rds.amazonaws.com"
           },
           {
             "name": "CELERY_BROKER_CONNECTION_MAX_RETRIES",
@@ -88,18 +88,18 @@
         "secrets": [
           {
             "name": "DB_PASSWORD",
-            "valueFrom": "arn:aws:ssm:us-west-2:600627364498:parameter/archer-health/db-password"
+            "valueFrom": "arn:aws:ssm:us-west-2:600627364498:parameter/project/db-password"
           },
           {
             "name": "JWT_SIGNING_KEY",
-            "valueFrom": "arn:aws:ssm:us-west-2:600627364498:parameter/archer-health/jwt-signing-key"
+            "valueFrom": "arn:aws:ssm:us-west-2:600627364498:parameter/project/jwt-signing-key"
           }
         ],
         "workingDirectory": "/archerhealth",
         "logConfiguration": {
           "logDriver": "awslogs",
           "options": {
-            "awslogs-group": "/ecs/archer-health-backend-stage",
+            "awslogs-group": "/ecs/project-backend-stage",
             "awslogs-region": "us-west-2",
             "awslogs-stream-prefix": "backend"
           }
@@ -108,7 +108,7 @@
       },
       {
         "name": "celery-worker",
-        "image": "600627364498.dkr.ecr.us-west-2.amazonaws.com/archer-health/backend:latest",
+        "image": "600627364498.dkr.ecr.us-west-2.amazonaws.com/project/backend:latest",
         "cpu": 0,
         "portMappings": [],
         "essential": false,
@@ -154,7 +154,7 @@
           },
           {
             "name": "DB_HOST",
-            "value": "db-archer-health-staging.cl2oeeckqw3o.us-west-2.rds.amazonaws.com"
+            "value": "db-project-staging.cl2oeeckqw3o.us-west-2.rds.amazonaws.com"
           },
           {
             "name": "CELERY_BROKER_CONNECTION_MAX_RETRIES",
@@ -184,11 +184,11 @@
         "secrets": [
           {
             "name": "DB_PASSWORD",
-            "valueFrom": "arn:aws:ssm:us-west-2:600627364498:parameter/archer-health/db-password"
+            "valueFrom": "arn:aws:ssm:us-west-2:600627364498:parameter/project/db-password"
           },
           {
             "name": "JWT_SIGNING_KEY",
-            "valueFrom": "arn:aws:ssm:us-west-2:600627364498:parameter/archer-health/jwt-signing-key"
+            "valueFrom": "arn:aws:ssm:us-west-2:600627364498:parameter/project/jwt-signing-key"
           }
         ],
         "dependsOn": [
@@ -201,7 +201,7 @@
         "logConfiguration": {
           "logDriver": "awslogs",
           "options": {
-            "awslogs-group": "/ecs/archer-health-backend-stage",
+            "awslogs-group": "/ecs/project-backend-stage",
             "awslogs-region": "us-west-2",
             "awslogs-stream-prefix": "celery-worker"
           }
@@ -210,7 +210,7 @@
       },
       {
         "name": "celery-beat",
-        "image": "600627364498.dkr.ecr.us-west-2.amazonaws.com/archer-health/backend:latest",
+        "image": "600627364498.dkr.ecr.us-west-2.amazonaws.com/project/backend:latest",
         "cpu": 0,
         "portMappings": [],
         "essential": false,
@@ -256,7 +256,7 @@
           },
           {
             "name": "DB_HOST",
-            "value": "db-archer-health-staging.cl2oeeckqw3o.us-west-2.rds.amazonaws.com"
+            "value": "db-project-staging.cl2oeeckqw3o.us-west-2.rds.amazonaws.com"
           },
           {
             "name": "CELERY_BROKER_CONNECTION_MAX_RETRIES",
@@ -286,11 +286,11 @@
         "secrets": [
           {
             "name": "DB_PASSWORD",
-            "valueFrom": "arn:aws:ssm:us-west-2:600627364498:parameter/archer-health/db-password"
+            "valueFrom": "arn:aws:ssm:us-west-2:600627364498:parameter/project/db-password"
           },
           {
             "name": "JWT_SIGNING_KEY",
-            "valueFrom": "arn:aws:ssm:us-west-2:600627364498:parameter/archer-health/jwt-signing-key"
+            "valueFrom": "arn:aws:ssm:us-west-2:600627364498:parameter/project/jwt-signing-key"
           }
         ],
         "dependsOn": [
@@ -303,7 +303,7 @@
         "logConfiguration": {
           "logDriver": "awslogs",
           "options": {
-            "awslogs-group": "/ecs/archer-health-backend-stage",
+            "awslogs-group": "/ecs/project-backend-stage",
             "awslogs-region": "us-west-2",
             "awslogs-stream-prefix": "celery-beat"
           }
