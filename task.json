@@ -19,14 +19,14 @@
         "essential": true,
         "command": [
           "gunicorn",
-          "archerhealth.wsgi:application",
+          "project.wsgi:application",
           "--bind",
           "0.0.0.0:8000"
         ],
         "environment": [
           {
             "name": "PYTHONPATH",
-            "value": "/archerhealth"
+            "value": "/project"
           },
           {
             "name": "JWT_ALGORITHM",
@@ -54,7 +54,7 @@
           },
           {
             "name": "DB_NAME",
-            "value": "archerhealth"
+            "value": "project"
           },
           {
             "name": "DB_HOST",
@@ -80,7 +80,7 @@
         "mountPoints": [
           {
             "sourceVolume": "media-volume",
-            "containerPath": "/archerhealth/media",
+            "containerPath": "/project/media",
             "readOnly": false
           }
         ],
@@ -95,7 +95,7 @@
             "valueFrom": "arn:aws:ssm:us-west-2:XXX:parameter/project/jwt-signing-key"
           }
         ],
-        "workingDirectory": "/archerhealth",
+        "workingDirectory": "/project",
         "logConfiguration": {
           "logDriver": "awslogs",
           "options": {
@@ -115,14 +115,14 @@
         "command": [
           "celery",
           "-A",
-          "archerhealth",
+          "project",
           "worker",
           "--loglevel=info"
         ],
         "environment": [
           {
             "name": "PYTHONPATH",
-            "value": "/archerhealth"
+            "value": "/project"
           },
           {
             "name": "JWT_ALGORITHM",
@@ -150,7 +150,7 @@
           },
           {
             "name": "DB_NAME",
-            "value": "archerhealth"
+            "value": "project"
           },
           {
             "name": "DB_HOST",
@@ -176,7 +176,7 @@
         "mountPoints": [
           {
             "sourceVolume": "media-volume",
-            "containerPath": "/archerhealth/media",
+            "containerPath": "/project/media",
             "readOnly": false
           }
         ],
@@ -197,7 +197,7 @@
             "condition": "START"
           }
         ],
-        "workingDirectory": "/archerhealth",
+        "workingDirectory": "/project",
         "logConfiguration": {
           "logDriver": "awslogs",
           "options": {
@@ -217,14 +217,14 @@
         "command": [
           "celery",
           "-A",
-          "archerhealth",
+          "project",
           "beat",
           "--loglevel=info"
         ],
         "environment": [
           {
             "name": "PYTHONPATH",
-            "value": "/archerhealth"
+            "value": "/project"
           },
           {
             "name": "JWT_ALGORITHM",
@@ -252,7 +252,7 @@
           },
           {
             "name": "DB_NAME",
-            "value": "archerhealth"
+            "value": "project"
           },
           {
             "name": "DB_HOST",
@@ -278,7 +278,7 @@
         "mountPoints": [
           {
             "sourceVolume": "media-volume",
-            "containerPath": "/archerhealth/media",
+            "containerPath": "/project/media",
             "readOnly": false
           }
         ],
@@ -299,7 +299,7 @@
             "condition": "START"
           }
         ],
-        "workingDirectory": "/archerhealth",
+        "workingDirectory": "/project",
         "logConfiguration": {
           "logDriver": "awslogs",
           "options": {
