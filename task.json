@@ -1,12 +1,12 @@
 {
     "family": "project-backend-prod",
-    "taskRoleArn": "arn:aws:iam::600627364498:role/project-task-role",
-    "executionRoleArn": "arn:aws:iam::600627364498:role/project-task-execution-role",
+    "taskRoleArn": "arn:aws:iam::XXX:role/project-task-role",
+    "executionRoleArn": "arn:aws:iam::XXX:role/project-task-execution-role",
     "networkMode": "awsvpc",
     "containerDefinitions": [
       {
         "name": "backend",
-        "image": "600627364498.dkr.ecr.us-west-2.amazonaws.com/project/backend:latest",
+        "image": "XXX.dkr.ecr.us-west-2.amazonaws.com/project/backend:latest",
         "cpu": 0,
         "portMappings": [
           {
@@ -88,11 +88,11 @@
         "secrets": [
           {
             "name": "DB_PASSWORD",
-            "valueFrom": "arn:aws:ssm:us-west-2:600627364498:parameter/project/db-password"
+            "valueFrom": "arn:aws:ssm:us-west-2:XXX:parameter/project/db-password"
           },
           {
             "name": "JWT_SIGNING_KEY",
-            "valueFrom": "arn:aws:ssm:us-west-2:600627364498:parameter/project/jwt-signing-key"
+            "valueFrom": "arn:aws:ssm:us-west-2:XXX:parameter/project/jwt-signing-key"
           }
         ],
         "workingDirectory": "/archerhealth",
@@ -108,7 +108,7 @@
       },
       {
         "name": "celery-worker",
-        "image": "600627364498.dkr.ecr.us-west-2.amazonaws.com/project/backend:latest",
+        "image": "XXX.dkr.ecr.us-west-2.amazonaws.com/project/backend:latest",
         "cpu": 0,
         "portMappings": [],
         "essential": false,
@@ -184,11 +184,11 @@
         "secrets": [
           {
             "name": "DB_PASSWORD",
-            "valueFrom": "arn:aws:ssm:us-west-2:600627364498:parameter/project/db-password"
+            "valueFrom": "arn:aws:ssm:us-west-2:XXX:parameter/project/db-password"
           },
           {
             "name": "JWT_SIGNING_KEY",
-            "valueFrom": "arn:aws:ssm:us-west-2:600627364498:parameter/project/jwt-signing-key"
+            "valueFrom": "arn:aws:ssm:us-west-2:XXX:parameter/project/jwt-signing-key"
           }
         ],
         "dependsOn": [
@@ -210,7 +210,7 @@
       },
       {
         "name": "celery-beat",
-        "image": "600627364498.dkr.ecr.us-west-2.amazonaws.com/project/backend:latest",
+        "image": "XXX.dkr.ecr.us-west-2.amazonaws.com/project/backend:latest",
         "cpu": 0,
         "portMappings": [],
         "essential": false,
@@ -286,11 +286,11 @@
         "secrets": [
           {
             "name": "DB_PASSWORD",
-            "valueFrom": "arn:aws:ssm:us-west-2:600627364498:parameter/project/db-password"
+            "valueFrom": "arn:aws:ssm:us-west-2:XXX:parameter/project/db-password"
           },
           {
             "name": "JWT_SIGNING_KEY",
-            "valueFrom": "arn:aws:ssm:us-west-2:600627364498:parameter/project/jwt-signing-key"
+            "valueFrom": "arn:aws:ssm:us-west-2:XXX:parameter/project/jwt-signing-key"
           }
         ],
         "dependsOn": [
