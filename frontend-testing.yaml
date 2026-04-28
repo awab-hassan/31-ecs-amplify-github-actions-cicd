@@ -1,0 +1,88 @@
+# Project's Frontend CI/CD for testing "ecs-cicd" branch
+name: Build and Deploy to AWS Amplify
+on:
+  push:
+    branches:
+      - ecs-cicd
+# Base environment variables that are constant
+env:
+  AWS_REGION: us-west-2
+  AMPLIFY_APP_ID: <your-amplify-app-id>
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      # First, we set environment variables based on the branch
+      - name: Set deployment variables
+        run: |
+          if [[ ${{ github.ref }} == 'refs/heads/ecs-cicd' ]]; then
+            # Staging environment settings
+            echo "SECRETS_ID=project/env/prod" >> $GITHUB_ENV
+            echo "DEPLOY_BRANCH=ecs-cicd" >> $GITHUB_ENV
+            echo "ENVIRONMENT=staging" >> $GITHUB_ENV
+          else
+            echo "Unsupported branch for deployment"
+            exit 1
+          fi
+      - name: Check out code
+        uses: actions/checkout@v3
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Fetch .env from AWS Secrets Manager
+        run: |
+          echo "Fetching environment variables for ${{ env.ENVIRONMENT }} environment"
+          aws secretsmanager get-secret-value \
+            --secret-id ${{ env.SECRETS_ID }} \
+            --query SecretString \
+            --output text > .env
+      
+      # Build steps - adjust based on your frontend framework
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build application
+        run: npm run build
+      
+      # Deploy to Amplify
+      - name: Deploy to AWS Amplify
+        run: |
+          # Start the job
+          DEPLOY_JOB=$(aws amplify start-job \
+            --app-id ${{ env.AMPLIFY_APP_ID }} \
+            --branch-name ${{ env.DEPLOY_BRANCH }} \
+            --job-type RELEASE \
+            --output json)
+          
+          # Extract the job ID
+          JOB_ID=$(echo $DEPLOY_JOB | jq -r '.jobSummary.jobId')
+          echo "Started Amplify deployment job: $JOB_ID"
+          
+          # Wait for the job to complete (poll every 30 seconds)
+          STATUS="PENDING"
+          while [ "$STATUS" == "PENDING" ] || [ "$STATUS" == "RUNNING" ]; do
+            echo "Deployment status: $STATUS - waiting 30 seconds..."
+            sleep 30
+            JOB_INFO=$(aws amplify get-job \
+              --app-id ${{ env.AMPLIFY_APP_ID }} \
+              --branch-name ${{ env.DEPLOY_BRANCH }} \
+              --job-id $JOB_ID \
+              --output json)
+            STATUS=$(echo $JOB_INFO | jq -r '.job.summary.status')
+          done
+          
+          if [ "$STATUS" == "SUCCEED" ]; then
+            echo "Deployment completed successfully!"
+          else
+            echo "Deployment failed with status: $STATUS"
+            exit 1
+          fi

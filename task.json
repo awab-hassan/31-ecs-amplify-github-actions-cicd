@@ -1,0 +1,330 @@
+{
+    "family": "archer-health-backend-prod",
+    "taskRoleArn": "arn:aws:iam::600627364498:role/archer-health-task-role",
+    "executionRoleArn": "arn:aws:iam::600627364498:role/archer-health-task-execution-role",
+    "networkMode": "awsvpc",
+    "containerDefinitions": [
+      {
+        "name": "backend",
+        "image": "600627364498.dkr.ecr.us-west-2.amazonaws.com/archer-health/backend:latest",
+        "cpu": 0,
+        "portMappings": [
+          {
+            "name": "backend-port",
+            "containerPort": 8000,
+            "hostPort": 8000,
+            "protocol": "tcp"
+          }
+        ],
+        "essential": true,
+        "command": [
+          "gunicorn",
+          "archerhealth.wsgi:application",
+          "--bind",
+          "0.0.0.0:8000"
+        ],
+        "environment": [
+          {
+            "name": "PYTHONPATH",
+            "value": "/archerhealth"
+          },
+          {
+            "name": "JWT_ALGORITHM",
+            "value": "HS256"
+          },
+          {
+            "name": "DB_PORT",
+            "value": "5432"
+          },
+          {
+            "name": "CELERY_BROKER_URL",
+            "value": "redis://redis:6379/0"
+          },
+          {
+            "name": "DB_USER",
+            "value": "postgres"
+          },
+          {
+            "name": "CELERY_RESULT_BACKEND",
+            "value": "redis://redis:6379/0"
+          },
+          {
+            "name": "JWT_ACCESS_TOKEN_LIFETIME",
+            "value": "60"
+          },
+          {
+            "name": "DB_NAME",
+            "value": "archerhealth"
+          },
+          {
+            "name": "DB_HOST",
+            "value": "db-archer-health-staging.cl2oeeckqw3o.us-west-2.rds.amazonaws.com"
+          },
+          {
+            "name": "CELERY_BROKER_CONNECTION_MAX_RETRIES",
+            "value": "10"
+          },
+          {
+            "name": "CELERY_BROKER_CONNECTION_RETRY",
+            "value": "true"
+          },
+          {
+            "name": "CELERY_BROKER_CONNECTION_TIMEOUT",
+            "value": "30"
+          },
+          {
+            "name": "JWT_REFRESH_TOKEN_LIFETIME",
+            "value": "1"
+          }
+        ],
+        "mountPoints": [
+          {
+            "sourceVolume": "media-volume",
+            "containerPath": "/archerhealth/media",
+            "readOnly": false
+          }
+        ],
+        "volumesFrom": [],
+        "secrets": [
+          {
+            "name": "DB_PASSWORD",
+            "valueFrom": "arn:aws:ssm:us-west-2:600627364498:parameter/archer-health/db-password"
+          },
+          {
+            "name": "JWT_SIGNING_KEY",
+            "valueFrom": "arn:aws:ssm:us-west-2:600627364498:parameter/archer-health/jwt-signing-key"
+          }
+        ],
+        "workingDirectory": "/archerhealth",
+        "logConfiguration": {
+          "logDriver": "awslogs",
+          "options": {
+            "awslogs-group": "/ecs/archer-health-backend-stage",
+            "awslogs-region": "us-west-2",
+            "awslogs-stream-prefix": "backend"
+          }
+        },
+        "systemControls": []
+      },
+      {
+        "name": "celery-worker",
+        "image": "600627364498.dkr.ecr.us-west-2.amazonaws.com/archer-health/backend:latest",
+        "cpu": 0,
+        "portMappings": [],
+        "essential": false,
+        "command": [
+          "celery",
+          "-A",
+          "archerhealth",
+          "worker",
+          "--loglevel=info"
+        ],
+        "environment": [
+          {
+            "name": "PYTHONPATH",
+            "value": "/archerhealth"
+          },
+          {
+            "name": "JWT_ALGORITHM",
+            "value": "HS256"
+          },
+          {
+            "name": "DB_PORT",
+            "value": "5432"
+          },
+          {
+            "name": "CELERY_BROKER_URL",
+            "value": "redis://redis:6379/0"
+          },
+          {
+            "name": "DB_USER",
+            "value": "postgres"
+          },
+          {
+            "name": "CELERY_RESULT_BACKEND",
+            "value": "redis://redis:6379/0"
+          },
+          {
+            "name": "JWT_ACCESS_TOKEN_LIFETIME",
+            "value": "60"
+          },
+          {
+            "name": "DB_NAME",
+            "value": "archerhealth"
+          },
+          {
+            "name": "DB_HOST",
+            "value": "db-archer-health-staging.cl2oeeckqw3o.us-west-2.rds.amazonaws.com"
+          },
+          {
+            "name": "CELERY_BROKER_CONNECTION_MAX_RETRIES",
+            "value": "10"
+          },
+          {
+            "name": "CELERY_BROKER_CONNECTION_RETRY",
+            "value": "true"
+          },
+          {
+            "name": "CELERY_BROKER_CONNECTION_TIMEOUT",
+            "value": "30"
+          },
+          {
+            "name": "JWT_REFRESH_TOKEN_LIFETIME",
+            "value": "1"
+          }
+        ],
+        "mountPoints": [
+          {
+            "sourceVolume": "media-volume",
+            "containerPath": "/archerhealth/media",
+            "readOnly": false
+          }
+        ],
+        "volumesFrom": [],
+        "secrets": [
+          {
+            "name": "DB_PASSWORD",
+            "valueFrom": "arn:aws:ssm:us-west-2:600627364498:parameter/archer-health/db-password"
+          },
+          {
+            "name": "JWT_SIGNING_KEY",
+            "valueFrom": "arn:aws:ssm:us-west-2:600627364498:parameter/archer-health/jwt-signing-key"
+          }
+        ],
+        "dependsOn": [
+          {
+            "containerName": "backend",
+            "condition": "START"
+          }
+        ],
+        "workingDirectory": "/archerhealth",
+        "logConfiguration": {
+          "logDriver": "awslogs",
+          "options": {
+            "awslogs-group": "/ecs/archer-health-backend-stage",
+            "awslogs-region": "us-west-2",
+            "awslogs-stream-prefix": "celery-worker"
+          }
+        },
+        "systemControls": []
+      },
+      {
+        "name": "celery-beat",
+        "image": "600627364498.dkr.ecr.us-west-2.amazonaws.com/archer-health/backend:latest",
+        "cpu": 0,
+        "portMappings": [],
+        "essential": false,
+        "command": [
+          "celery",
+          "-A",
+          "archerhealth",
+          "beat",
+          "--loglevel=info"
+        ],
+        "environment": [
+          {
+            "name": "PYTHONPATH",
+            "value": "/archerhealth"
+          },
+          {
+            "name": "JWT_ALGORITHM",
+            "value": "HS256"
+          },
+          {
+            "name": "DB_PORT",
+            "value": "5432"
+          },
+          {
+            "name": "CELERY_BROKER_URL",
+            "value": "redis://redis:6379/0"
+          },
+          {
+            "name": "DB_USER",
+            "value": "postgres"
+          },
+          {
+            "name": "CELERY_RESULT_BACKEND",
+            "value": "redis://redis:6379/0"
+          },
+          {
+            "name": "JWT_ACCESS_TOKEN_LIFETIME",
+            "value": "60"
+          },
+          {
+            "name": "DB_NAME",
+            "value": "archerhealth"
+          },
+          {
+            "name": "DB_HOST",
+            "value": "db-archer-health-staging.cl2oeeckqw3o.us-west-2.rds.amazonaws.com"
+          },
+          {
+            "name": "CELERY_BROKER_CONNECTION_MAX_RETRIES",
+            "value": "10"
+          },
+          {
+            "name": "CELERY_BROKER_CONNECTION_RETRY",
+            "value": "true"
+          },
+          {
+            "name": "CELERY_BROKER_CONNECTION_TIMEOUT",
+            "value": "30"
+          },
+          {
+            "name": "JWT_REFRESH_TOKEN_LIFETIME",
+            "value": "1"
+          }
+        ],
+        "mountPoints": [
+          {
+            "sourceVolume": "media-volume",
+            "containerPath": "/archerhealth/media",
+            "readOnly": false
+          }
+        ],
+        "volumesFrom": [],
+        "secrets": [
+          {
+            "name": "DB_PASSWORD",
+            "valueFrom": "arn:aws:ssm:us-west-2:600627364498:parameter/archer-health/db-password"
+          },
+          {
+            "name": "JWT_SIGNING_KEY",
+            "valueFrom": "arn:aws:ssm:us-west-2:600627364498:parameter/archer-health/jwt-signing-key"
+          }
+        ],
+        "dependsOn": [
+          {
+            "containerName": "backend",
+            "condition": "START"
+          }
+        ],
+        "workingDirectory": "/archerhealth",
+        "logConfiguration": {
+          "logDriver": "awslogs",
+          "options": {
+            "awslogs-group": "/ecs/archer-health-backend-stage",
+            "awslogs-region": "us-west-2",
+            "awslogs-stream-prefix": "celery-beat"
+          }
+        },
+        "systemControls": []
+      }
+    ],
+    "volumes": [
+      {
+        "name": "media-volume",
+        "efsVolumeConfiguration": {
+          "fileSystemId": "fs-01c295e97ddc6b168",
+          "rootDirectory": "/",
+          "transitEncryption": "ENABLED"
+        }
+      }
+    ],
+    "requiresCompatibilities": [
+      "FARGATE"
+    ],
+    "cpu": "1024",
+    "memory": "2048",
+    "tags": []
+  }

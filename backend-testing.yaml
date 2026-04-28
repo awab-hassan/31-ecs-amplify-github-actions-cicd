@@ -1,0 +1,88 @@
+  ## Project's Backend CI/CD for testing "ecs-cicd" branch
+  name: Build, Push, and Deploy via ECS TEST
+  on:
+    push:
+      branches:
+        - ecs-cicd
+  # Base environment variables that are constant
+  env:
+    AWS_REGION: xx-region-1
+    ECR_URI: account_id.dkr.ecr.xx-region-1.amazonaws.com/project/backend
+  jobs:
+    build-and-deploy:
+      runs-on: ubuntu-latest
+      steps:
+        # First, we set environment variables based on the branch
+        - name: Set deployment variables
+          run: |
+            if [[ ${{ github.ref }} == 'refs/heads/ecs-cicd' ]]; then
+              # Production environment settings
+              echo "SECRETS_ID=project/env/prod" >> $GITHUB_ENV
+              echo "DEPLOY_BRANCH=ecs-cicd" >> $GITHUB_ENV
+              echo "ENVIRONMENT=staging" >> $GITHUB_ENV
+              echo "ECS_CLUSTER=project-stage" >> $GITHUB_ENV
+              echo "ECS_SERVICE=project-backend-stage" >> $GITHUB_ENV
+              echo "TASK_DEFINITION=project-backend-stage" >> $GITHUB_ENV
+            else
+              echo "Unsupported branch for deployment"
+              exit 1
+            fi
+        - name: Check out code
+          uses: actions/checkout@v3
+        - name: Configure AWS credentials
+          uses: aws-actions/configure-aws-credentials@v1
+          with:
+            aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+            aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+            aws-region: ${{ env.AWS_REGION }}
+        - name: Login to Amazon ECR
+          uses: aws-actions/amazon-ecr-login@v1
+        - name: Fetch .env from AWS Secrets Manager
+          run: |
+            echo "Fetching environment variables for ${{ env.ENVIRONMENT }} environment"
+            aws secretsmanager get-secret-value \
+              --secret-id ${{ env.SECRETS_ID }} \
+              --query SecretString \
+              --output text > .env
+        - name: Build & Push Docker Image
+          run: |
+            echo "Building Docker image for branch: ${{ github.ref_name }}"
+            docker build -t $ECR_URI:latest --no-cache .
+            docker push $ECR_URI:latest
+        
+        # ECS Deployment Part
+        - name: Install jq for JSON manipulation
+          run: sudo apt-get install jq -y
+        
+        - name: Update ECS task definition with new image
+          run: |
+            # Get the current task definition
+            echo "Fetching current task definition: ${{ env.TASK_DEFINITION }}"
+            aws ecs describe-task-definition --task-definition ${{ env.TASK_DEFINITION }} > task-def.json
+            
+            # Extract and clean the task definition
+            jq .taskDefinition task-def.json > taskdefinition.json
+            jq 'del(.taskDefinitionArn) | del(.revision) | del(.status) | del(.requiresAttributes) | del(.compatibilities) | del(.registeredAt) | del(.registeredBy)' taskdefinition.json > container-definition.json
+            
+            # Update the container image in the task definition
+            echo "Updating container image to: $ECR_URI:latest"
+            CONTAINER_NAME=$(jq -r '.containerDefinitions[0].name' container-definition.json)
+            jq --arg IMAGE "$ECR_URI:latest" '.containerDefinitions[0].image = $IMAGE' container-definition.json > updated-container-definition.json
+            
+            # Register the new task definition
+            echo "Registering new task definition"
+            NEW_TASK_DEF_ARN=$(aws ecs register-task-definition --cli-input-json file://updated-container-definition.json --query 'taskDefinition.taskDefinitionArn' --output text)
+            
+            # Extract the task definition name and revision
+            NEW_TASK_DEF=$(echo $NEW_TASK_DEF_ARN | awk -F '/' '{print $2}')
+            echo "New task definition: $NEW_TASK_DEF"
+            
+            # Update the ECS service with the new task definition
+            echo "Updating ECS service: ${{ env.ECS_SERVICE }} with new task definition"
+            aws ecs update-service --cluster ${{ env.ECS_CLUSTER }} --service ${{ env.ECS_SERVICE }} --task-definition $NEW_TASK_DEF
+            
+            # Wait for the service to become stable
+            echo "Waiting for service to stabilize"
+            aws ecs wait services-stable --cluster ${{ env.ECS_CLUSTER }} --services ${{ env.ECS_SERVICE }}
+            
+            echo "Deployment completed successfully"

@@ -1,0 +1,136 @@
+# Project's Backend CI/CD for dev branch
+name: Build, Push, and Deploy via SSM
+
+on:
+  push:
+    branches:
+      - dev
+
+# Base environment variables that are constant
+env:
+  AWS_REGION: xx-region-2
+  ECR_URI: ECR_URL
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # Set environment variables based on branch
+      - name: Set deployment variables
+        run: |
+          if [[ ${{ github.ref }} == 'refs/heads/master' ]]; then
+            echo "EC2_INSTANCE_ID=<your-ec2-instance-id>" >> $GITHUB_ENV
+            echo "DEPLOY_BRANCH=master" >> $GITHUB_ENV
+          elif [[ ${{ github.ref }} == 'refs/heads/dev' ]]; then
+            echo "EC2_INSTANCE_ID=<your-ec2-instance-id>" >> $GITHUB_ENV
+            echo "DEPLOY_BRANCH=dev" >> $GITHUB_ENV
+          else
+            echo "Unsupported branch for deployment"
+            exit 1
+          fi
+
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Fetch .env from AWS Secrets Manager
+        run: |
+          aws secretsmanager get-secret-value \
+            --secret-id project/env/backend \
+            --query SecretString \
+            --output text > .env
+
+      - name: Build & Push Docker Image
+        run: |
+          echo "Building Docker image for branch: ${{ github.ref_name }}"
+          docker build -t $ECR_URI:latest --no-cache .
+          docker run --rm $ECR_URI:latest ls -la /project
+          docker push $ECR_URI:latest
+
+      - name: Deploy via SSM
+        run: |
+          echo "Deploying to instance: $EC2_INSTANCE_ID for branch: ${{ github.ref_name }}"
+          
+          echo "{\"commands\":[
+            \"echo 'Starting deployment for branch: ${{ github.ref_name }} at $(date)'\",
+            \"cd /var/www/html/project-be\",
+            \"echo 'Cleaning and resetting git state...'\",
+            \"git clean -fd\",
+            \"git reset --hard\",
+            \"git fetch --all\",
+            \"echo 'Checking out branch: ${{ github.ref_name }}...'\",
+            \"git checkout ${{ github.ref_name }}\",
+            \"git pull origin ${{ github.ref_name }}\",
+            \"echo 'Stopping and removing containers...'\",
+            \"docker-compose down --remove-orphans\",
+            \"docker stop project-backend || true\",
+            \"docker rm -f project-backend || true\",
+            \"echo 'Waiting for containers to fully stop...'\",
+            \"sleep 10\",
+            \"echo 'Checking container status...'\",
+            \"docker ps -a | grep project-backend || true\",
+            \"echo 'Pruning Docker system...'\",
+            \"docker system prune -af || true\",
+            \"echo 'Pulling new image...'\",
+            \"docker pull --disable-content-trust $ECR_URI:latest || (aws ecr get-login-password --region xx-region-2 | docker login --username AWS --password-stdin $ECR_URI && docker pull $ECR_URI:latest)\",
+            \"echo 'Running database migrations...'\",
+            \"docker-compose run --rm backend python manage.py migrate\",
+            \"echo 'Starting services...'\",
+            \"docker-compose up -d\",
+            \"echo 'Checking final container status...'\",
+            \"docker ps\",
+            \"echo 'Deployment completed at $(date)'\"
+          ]}" > commands.json
+  
+          COMMAND_ID=$(aws ssm send-command \
+            --document-name "AWS-RunShellScript" \
+            --comment "Deploying container image with latest tag for branch: ${{ github.ref_name }}" \
+            --instance-ids "$EC2_INSTANCE_ID" \
+            --parameters file://commands.json \
+            --timeout-seconds 3600 \
+            --output text \
+            --query "Command.CommandId")
+          
+          echo "SSM Command sent. ID: $COMMAND_ID"
+          
+          aws ssm wait command-executed \
+            --command-id "$COMMAND_ID" \
+            --instance-id "$EC2_INSTANCE_ID" \
+            --cli-input-json '{"WaiterConfig": {"Delay": 15, "MaxAttempts": 60}}'
+          
+          STATUS=$(aws ssm get-command-invocation \
+            --command-id "$COMMAND_ID" \
+            --instance-id "$EC2_INSTANCE_ID" \
+            --output text \
+            --query "Status")
+          
+          echo "Final SSM command status: $STATUS"
+          
+          # If deployment failed, fetch the command output for debugging
+          if [ "$STATUS" != "Success" ]; then
+            echo "Fetching deployment logs for debugging..."
+            aws ssm get-command-invocation \
+              --command-id "$COMMAND_ID" \
+              --instance-id "$EC2_INSTANCE_ID" \
+              --output text \
+              --query "StandardOutputContent"
+            
+            echo "Fetching error output..."
+            aws ssm get-command-invocation \
+              --command-id "$COMMAND_ID" \
+              --instance-id "$EC2_INSTANCE_ID" \
+              --output text \
+              --query "StandardErrorContent"
+            
+            echo "Deployment failed!"
+            exit 1
+          fi
