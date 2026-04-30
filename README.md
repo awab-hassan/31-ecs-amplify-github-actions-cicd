@@ -1,4 +1,4 @@
-# ecs-amplify-github-actions-cicd
+# Project # 31 - ecs-amplify-github-actions-cicd
 
 GitHub Actions workflows that deliver a Django backend to Amazon ECS Fargate and a React frontend to AWS Amplify. A reference ECS task definition (`task.json`) accompanies the workflows to document the container shape being deployed. Each workflow runs end-to-end on GitHub-hosted runners using the AWS CLI, with no CodePipeline or external orchestrator.
 
