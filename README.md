@@ -4,6 +4,10 @@ GitHub Actions workflows that deliver a Django backend to Amazon ECS Fargate and
 
 A legacy SSM-based EC2 deploy path is preserved for reference, showing the prior deployment pattern that the ECS workflow replaced.
 
+## Architecture
+
+![Architecture Diagram](./architecture.png)
+
 ## Workflows
 
 ### `backend-p.yaml` — ECS Backend Deploy
